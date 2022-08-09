@@ -85,7 +85,7 @@ describe("Token", () => {
         ).to.be.reverted;
       });
 
-      it("rejects invalid receipent", async () => {
+      it("rejects invalid recepient", async () => {
         const amount = tokens(100);
 
         await expect(
@@ -135,6 +135,65 @@ describe("Token", () => {
             .connect(deployer)
             .approve("0x0000000000000000000000000000000000000000", amount)
         ).to.be.reverted;
+      });
+    });
+  });
+
+  describe("Delegated Tolen Transfers", () => {
+    let amount, transaction, result;
+
+    beforeEach(async () => {
+      amount = tokens(100);
+      transaction = await token
+        .connect(deployer)
+        .approve(exchange.address, amount);
+      result = await transaction.wait();
+    });
+
+    describe("Success", () => {
+      beforeEach(async () => {
+        transaction = await token
+          .connect(exchange)
+          .transferFrom(deployer.address, receiver.address, amount);
+        result = await transaction.wait();
+      });
+
+      it("Transfer balances", async () => {
+        expect(await token.balanceOf(deployer.address)).to.equal(
+          tokens(999900)
+        );
+        expect(await token.balanceOf(receiver.address)).to.equal(amount);
+      });
+
+      it("resets the allowance", async () => {
+        expect(
+          await token.allowance(deployer.address, exchange.address)
+        ).to.equal(0);
+      });
+
+      it("emits a Transfer event", () => {
+        const event = result.events[0];
+        const args = event.args;
+
+        expect(event.event).to.equal("Transfer");
+        expect(args.from).to.equal(deployer.address);
+        expect(args.to).to.equal(receiver.address);
+        expect(args.value).to.equal(amount);
+      });
+    });
+
+    describe("Failure", async () => {
+      it("Reject insufficient amounts", async () => {
+        // Transfer more tokens than deployer has
+        const invalidAmount = tokens(1000001);
+        await expect(
+          token
+            .connect(exchange)
+            .transferFrom(deployer.address, receiver.address, invalidAmount)
+        ).to.be.rejected;
+        expect(
+          await token.allowance(deployer.address, exchange.address)
+        ).not.equal(0);
       });
     });
   });
