@@ -2,7 +2,7 @@ const { ethers } = require("hardhat");
 const { expect } = require("chai");
 
 const tokens = (n) => {
-  return ethers.utils.parseUnits(n, "ether");
+  return ethers.utils.parseUnits(n.toString(), "ether");
 };
 
 describe("Token", () => {
